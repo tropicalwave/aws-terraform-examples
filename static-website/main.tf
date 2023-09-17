@@ -96,6 +96,10 @@ module "cdn" {
     }
   }
 
+  logging_config = {
+    bucket = module.log_bucket.s3_bucket_bucket_domain_name
+  }
+
   default_cache_behavior = {
     target_origin_id       = "s3_oac"
     viewer_protocol_policy = "redirect-to-https"
