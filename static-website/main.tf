@@ -30,6 +30,12 @@ data "aws_iam_policy_document" "s3_policy" {
   statement {
     actions   = ["s3:GetObject"]
     resources = ["${module.s3_bucket.s3_bucket_arn}/*"]
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [module.cdn.cloudfront_distribution_arn]
+
+    }
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
@@ -61,8 +67,6 @@ module "log_bucket" {
     type       = "CanonicalUser"
     permission = "FULL_CONTROL"
     id         = data.aws_cloudfront_log_delivery_canonical_user_id.cloudfront.id
-    # Ref. https://github.com/terraform-providers/terraform-provider-aws/issues/12512
-    # Ref. https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/AccessLogs.html
   }]
   force_destroy = true
 }
