@@ -63,3 +63,7 @@ resource "aws_security_group" "allow_efs" {
     security_groups = [aws_security_group.allow_ssh_pub.id]
   }
 }
+
+resource "aws_eip" "one" {
+  domain = "vpc"
+}

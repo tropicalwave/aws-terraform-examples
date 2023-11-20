@@ -9,3 +9,7 @@ output "sg_efs_id" {
 output "sg_ssh_id" {
   value = aws_security_group.allow_ssh_pub.id
 }
+
+output "one_eip" {
+  value = aws_eip.one
+}

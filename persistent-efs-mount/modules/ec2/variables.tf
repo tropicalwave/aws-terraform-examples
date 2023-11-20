@@ -1,3 +1,7 @@
+variable "one_eip" {
+  type = any
+}
+
 variable "namespace" {
   type = string
 }
@@ -7,6 +11,10 @@ variable "vpc" {
 }
 
 variable "key_name" {
+  type = string
+}
+
+variable "region" {
   type = string
 }
 
