@@ -2,10 +2,12 @@
 
 ## Overview
 
-This code shows a deployment of an EC2 instance that, even
+This code shows the deployment of an EC2 instance that, even
 after experiencing an outage in its Availability Zone,
 persists data in one directory in EFS (which protects against
-outages of single AZs).
+outages of single AZs). The EC2 instance itself is part of
+an autoscaling group that ensures that it is restarted after
+an outage.
 
 ![Architecture](images/architecture.svg)
 
