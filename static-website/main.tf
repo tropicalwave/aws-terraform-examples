@@ -7,6 +7,7 @@ resource "random_pet" "this" {
 }
 
 module "s3_bucket" {
+  #checkov:skip=CKV_TF_1:ensure easier readability for examples
   source        = "terraform-aws-modules/s3-bucket/aws"
   bucket        = "static-website-${random_pet.this.id}"
   force_destroy = true
@@ -52,6 +53,7 @@ data "aws_canonical_user_id" "current" {}
 data "aws_cloudfront_log_delivery_canonical_user_id" "cloudfront" {}
 
 module "log_bucket" {
+  #checkov:skip=CKV_TF_1:ensure easier readability for examples
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "~> 3.0"
 
@@ -72,6 +74,7 @@ module "log_bucket" {
 }
 
 module "cdn" {
+  #checkov:skip=CKV_TF_1:ensure easier readability for examples
   source              = "terraform-aws-modules/cloudfront/aws"
   version             = "~> 3.0"
   is_ipv6_enabled     = true
