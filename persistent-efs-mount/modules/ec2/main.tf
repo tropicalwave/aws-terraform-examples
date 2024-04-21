@@ -82,6 +82,8 @@ EOF
 }
 
 resource "aws_iam_role_policy" "ec2_role_policy" {
+  #checkov:skip=CKV_AWS_355:permission cannot be scoped to specific EIP
+  #checkov:skip=CKV_AWS_290:permission cannot be scoped to specific EIP
   name = "${var.namespace}-ec2_role_policy"
   role = aws_iam_role.ec2_role.id
 
@@ -111,6 +113,7 @@ resource "aws_efs_file_system" "efs" {
   # The below uses the KMS default key for EFS encryption for simplicity...
   #ts:skip=AWS.EFS.EncryptionandKeyManagement.High.0409
   #ts:skip=AWS.EFS.EncryptionandKeyManagement.High.0410
+  #checkov:skip=CKV_AWS_184:see above
   creation_token   = "${var.namespace}-EFS"
   encrypted        = true
   performance_mode = "generalPurpose"
@@ -125,6 +128,7 @@ resource "aws_efs_mount_target" "efs_mount" {
 
 # Auto Scaling configuration
 resource "aws_launch_template" "ec2_launch_tpl" {
+  #checkov:skip=CKV_AWS_88:intentionally associated with public IP
   image_id      = data.aws_ami.amzn2.id
   instance_type = "t2.nano"
   key_name      = var.key_name
@@ -135,7 +139,7 @@ resource "aws_launch_template" "ec2_launch_tpl" {
 
   metadata_options {
     http_endpoint = "enabled"
-    http_tokens   = "optional"
+    http_tokens   = "required"
   }
   network_interfaces {
     associate_public_ip_address = true
@@ -151,6 +155,12 @@ resource "aws_autoscaling_group" "ec2_public" {
   launch_template {
     id      = aws_launch_template.ec2_launch_tpl.id
     version = "$Latest"
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "persistent-efs-mount"
+    propagate_at_launch = true
   }
 
   vpc_zone_identifier = var.vpc.public_subnets
