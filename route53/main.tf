@@ -19,10 +19,12 @@ locals {
 data "aws_caller_identity" "current" {}
 
 resource "aws_kms_key" "example" {
+  #ts:skip=AC_AWS_0160
+  # automatic key rotation cannot be enabled on asymmetric KMS keys, see
+  # https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html
   customer_master_key_spec = "ECC_NIST_P256"
   deletion_window_in_days  = 7
   key_usage                = "SIGN_VERIFY"
-  enable_key_rotation      = true
   policy = jsonencode({
     Statement = [
       {
