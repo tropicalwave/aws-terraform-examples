@@ -130,7 +130,7 @@ resource "aws_efs_mount_target" "efs_mount" {
 resource "aws_launch_template" "ec2_launch_tpl" {
   #checkov:skip=CKV_AWS_88:intentionally associated with public IP
   image_id      = data.aws_ami.amzn2.id
-  instance_type = "t2.nano"
+  instance_type = "t3.nano"
   key_name      = var.key_name
   user_data     = base64encode(data.template_cloudinit_config.config.rendered)
   iam_instance_profile {

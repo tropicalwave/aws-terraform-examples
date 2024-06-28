@@ -9,6 +9,10 @@ outages of single AZs). The EC2 instance itself is part of
 an autoscaling group that ensures that it is restarted after
 an outage.
 
+Note: EFS is mounted at `/efs` and it might take several minutes
+after the EC2 instance startup until the EFS mount target can be
+resolved by its DNS name and mounted thereafter.
+
 ![Architecture](images/architecture.svg)
 
 ## Test Failover
