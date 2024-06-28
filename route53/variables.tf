@@ -6,6 +6,8 @@ variable "main_domain" {
 
 variable "region" {
   description = "AWS region"
-  default     = "eu-west-1"
-  type        = string
+  # DNSSEC CMK must be located in us-east-1, see
+  # https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-configuring-dnssec-cmk-requirements.html
+  default = "us-east-1"
+  type    = string
 }

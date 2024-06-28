@@ -5,5 +5,12 @@
 efs_id="${efs_id}"
 yum install -y amazon-efs-utils
 mkdir /efs
-mount -t efs "$efs_id":/ /efs
-echo "$efs_id":/ /efs efs defaults,_netdev 0 0 >> /etc/fstab
+
+if ! grep -q /efs /etc/fstab; then
+    echo "$efs_id":/ /efs efs _netdev,noresvport,tls,iam 0 0 >>/etc/fstab
+fi
+
+while true; do
+    mount -t efs "$efs_id":/ /efs && break
+    sleep 10
+done

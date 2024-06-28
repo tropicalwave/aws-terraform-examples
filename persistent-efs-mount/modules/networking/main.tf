@@ -19,6 +19,7 @@ data "http" "myip" {
 }
 
 module "vpc" {
+  #checkov:skip=CKV_TF_1:ensure easier readability for examples
   source          = "terraform-aws-modules/vpc/aws"
   name            = "${var.namespace}-vpc"
   cidr            = "10.0.0.0/16"
@@ -30,6 +31,7 @@ module "vpc" {
 
 resource "aws_security_group" "allow_ssh_pub" {
   #ts:skip=AC_AWS_0319
+  #checkov:skip=CKV2_AWS_5:associated dynamically to autoscaling group
   name        = "${var.namespace}-allow_ssh"
   description = "Allow SSH inbound traffic"
   vpc_id      = module.vpc.vpc_id
@@ -43,6 +45,7 @@ resource "aws_security_group" "allow_ssh_pub" {
   }
 
   egress {
+    description = "allow all outgoing traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -51,6 +54,7 @@ resource "aws_security_group" "allow_ssh_pub" {
 }
 
 resource "aws_security_group" "allow_efs" {
+  #checkov:skip=CKV2_AWS_5:associated dynamically to autoscaling group
   name        = "${var.namespace}-allow_efs"
   description = "Allow EFS traffic"
   vpc_id      = module.vpc.vpc_id
@@ -65,5 +69,6 @@ resource "aws_security_group" "allow_efs" {
 }
 
 resource "aws_eip" "one" {
+  #checkov:skip=CKV2_AWS_19:EIP is associated dynamically
   domain = "vpc"
 }
