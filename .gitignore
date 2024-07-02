@@ -1,3 +1,4 @@
 **/.terraform/
 **/*.pem
+**/*.zip
 **/terraform.tfstate*
