@@ -20,4 +20,4 @@ execution of `terraform destroy`.
 
 * [Cloudfront deployment with static content](static-website/README.md)
 * [Highly available EC2 instance with EFS backend](persistent-efs-mount/README.md)
-* [Route53 DNS service deployment from CSV file](route53/README.md)
+* [Route53 DNS service deployment from CSV file with DNSSEC](route53/README.md)

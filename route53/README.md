@@ -1,4 +1,4 @@
-# Route53 DNS service deployment
+# Route53 DNS service deployment with DNSSEC
 
 ## Overview
 
@@ -10,4 +10,9 @@ will output the assigned name servers for the main domain
 It can be queried like shown below afterwards:
 ```bash
 dig my.test @<name of one of the issued DNS servers>
+```
+
+For verification of the DNSSEC record, run
+```bash
+dig +dnssec +short my.test @<name of one of the issued DNS servers>
 ```
