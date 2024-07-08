@@ -18,7 +18,7 @@ def handler(event, context):  # pylint:disable=unused-argument
     """Entry point"""
     try:
         # Get current parameter value
-        response = ssm.get_parameter(Name=PARAMETER_NAME)
+        response = ssm.get_parameter(Name=PARAMETER_NAME, WithDecryption=True)
         current_value = int(response["Parameter"]["Value"])
 
         # Increment value
@@ -26,7 +26,10 @@ def handler(event, context):  # pylint:disable=unused-argument
 
         # Update parameter with new value
         ssm.put_parameter(
-            Name=PARAMETER_NAME, Value=str(new_value), Type="String", Overwrite=True
+            Name=PARAMETER_NAME,
+            Value=str(new_value),
+            Type="SecureString",
+            Overwrite=True,
         )
 
         return {

@@ -144,12 +144,13 @@ resource "aws_lambda_function" "parameter_store_lambda" {
   #ts:skip=AC_AWS_0486 - no VPC configuration in this example
   #ts:skip=AC_AWS_0483 - environment variables are not encrypted with own key
   #ts:skip=AC_AWS_0485 - disable tracing
-  s3_bucket     = module.s3_bucket.s3_bucket_id
-  s3_key        = aws_signer_signing_job.this.signed_object[0]["s3"][0]["key"]
-  function_name = "parameter_store_lambda"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "lambda_function.handler"
-  runtime       = "python3.12"
+  s3_bucket        = module.s3_bucket.s3_bucket_id
+  s3_key           = aws_signer_signing_job.this.signed_object[0]["s3"][0]["key"]
+  function_name    = "parameter_store_lambda"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_function.handler"
+  runtime          = "python3.12"
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   # disable concurrent execution
   reserved_concurrent_executions = 1
@@ -181,6 +182,8 @@ resource "aws_s3_object" "unsigned" {
   depends_on = [
     module.s3_bucket
   ]
+
+  etag = data.archive_file.lambda_zip.output_base64sha256
 }
 
 resource "aws_signer_signing_job" "this" {
@@ -204,7 +207,7 @@ resource "aws_signer_signing_job" "this" {
 
 resource "aws_lambda_code_signing_config" "this" {
   allowed_publishers {
-    signing_profile_version_arns = [aws_signer_signing_profile.this.arn]
+    signing_profile_version_arns = [aws_signer_signing_profile.this.version_arn]
   }
 
   policies {
