@@ -32,7 +32,7 @@ module "s3_bucket" {
 }
 
 resource "aws_kms_key" "parameter_key" {
-  description             = "KMS key for encrypting SSM parameters"
+  description             = "KMS key for encrypting SSM parameters and Cloudwatch logs"
   deletion_window_in_days = 7
   enable_key_rotation     = true
 
@@ -62,6 +62,26 @@ resource "aws_kms_key" "parameter_key" {
           "kms:DescribeKey"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "Allow CloudWatch Logs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${var.region}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt*",
+          "kms:Decrypt*",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:Describe*"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" : "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:*"
+          }
+        }
       }
     ]
   })
@@ -274,4 +294,11 @@ resource "aws_lambda_permission" "apigw_lambda" {
   function_name = aws_lambda_function.parameter_store_lambda.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
+}
+
+resource "aws_cloudwatch_log_group" "lambda_log_group" {
+  #checkov:skip=CKV_AWS_338:low retention perios suffices for example
+  name              = "/aws/lambda/${aws_lambda_function.parameter_store_lambda.function_name}"
+  retention_in_days = 14
+  kms_key_id        = aws_kms_key.parameter_key.arn
 }

@@ -3,12 +3,16 @@
 # pylint:disable=import-error
 
 import json
+import logging
 import os
 
 import boto3
 
 # Initialize SSM client
 ssm = boto3.client("ssm")
+
+logger = logging.getLogger()
+logger.setLevel("WARNING")
 
 # Get the parameter name from environment variable
 PARAMETER_NAME = os.environ["PARAMETER_NAME"]
@@ -32,6 +36,7 @@ def handler(event, context):  # pylint:disable=unused-argument
             Overwrite=True,
         )
 
+        logger.warning("new value is %i", new_value)
         return {
             "statusCode": 200,
             "body": json.dumps(
