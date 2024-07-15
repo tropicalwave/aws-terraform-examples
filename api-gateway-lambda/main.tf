@@ -183,7 +183,7 @@ resource "aws_s3_object" "unsigned" {
     module.s3_bucket
   ]
 
-  etag = data.archive_file.lambda_zip.output_base64sha256
+  source_hash = data.archive_file.lambda_zip.output_base64sha256
 }
 
 resource "aws_signer_signing_job" "this" {
