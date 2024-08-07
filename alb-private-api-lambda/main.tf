@@ -8,13 +8,12 @@ data "archive_file" "lambda" {
 
 module "vpc_alb" {
   #checkov:skip=CKV_TF_1:ensure easier readability for examples
-  source          = "terraform-aws-modules/vpc/aws"
-  name            = "lb-vpc"
-  cidr            = "10.0.0.0/16"
-  azs             = data.aws_availability_zones.available.names
-  public_subnets  = ["10.0.0.0/24", "10.0.1.0/24", "10.0.2.0/24"]
-  private_subnets = ["10.0.3.0/24", "10.0.4.0/24", "10.0.5.0/24"]
-  version         = ">= 2.0.0"
+  source         = "terraform-aws-modules/vpc/aws"
+  name           = "lb-vpc"
+  cidr           = "10.0.0.0/16"
+  azs            = data.aws_availability_zones.available.names
+  public_subnets = ["10.0.0.0/24", "10.0.1.0/24", "10.0.2.0/24"]
+  version        = ">= 2.0.0"
 }
 
 module "vpc_api" {
@@ -23,8 +22,7 @@ module "vpc_api" {
   name            = "api-vpc"
   cidr            = "10.1.0.0/16"
   azs             = data.aws_availability_zones.available.names
-  public_subnets  = ["10.1.0.0/24", "10.1.1.0/24", "10.1.2.0/24"]
-  private_subnets = ["10.1.3.0/24", "10.1.4.0/24", "10.1.5.0/24"]
+  private_subnets = ["10.1.0.0/24", "10.1.1.0/24", "10.1.2.0/24"]
   version         = ">= 2.0.0"
 }
 
@@ -38,7 +36,7 @@ module "tgw" {
   vpc_attachments = {
     vpc1 = {
       vpc_id      = module.vpc_alb.vpc_id
-      subnet_ids  = module.vpc_alb.private_subnets
+      subnet_ids  = module.vpc_alb.public_subnets
       dns_support = true
     }
     vpc2 = {
@@ -50,8 +48,8 @@ module "tgw" {
 }
 
 resource "aws_route" "vpc1_to_tgw" {
-  count                  = length(module.vpc_alb.private_route_table_ids)
-  route_table_id         = module.vpc_alb.private_route_table_ids[count.index]
+  count                  = length(module.vpc_alb.public_route_table_ids)
+  route_table_id         = module.vpc_alb.public_route_table_ids[count.index]
   destination_cidr_block = module.vpc_api.vpc_cidr_block
   transit_gateway_id     = module.tgw.ec2_transit_gateway_id
 }
@@ -83,7 +81,7 @@ resource "aws_security_group" "vpc_endpoint" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = [module.vpc_api.vpc_cidr_block]
+    cidr_blocks = [module.vpc_alb.vpc_cidr_block]
   }
 
   egress {
