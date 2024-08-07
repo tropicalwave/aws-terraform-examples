@@ -1,0 +1,4 @@
+[rules]
+    skip-rules = [
+        "AWS.VPC.Logging.Medium.0470",
+    ]

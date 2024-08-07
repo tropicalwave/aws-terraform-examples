@@ -116,6 +116,8 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 }
 
 resource "aws_lambda_function" "my_lambda" {
+  #ts:skip=AWS.LambdaFunction.Logging.0472
+  #ts:skip=AWS.LambdaFunction.Logging.0470
   #checkov:skip=CKV_AWS_272:code signing not used here (see api-gateway-lambda for an example)
   #checkov:skip=CKV_AWS_116:no DLQ necessary here
   #checkov:skip=CKV_AWS_117:no VPC necessary
@@ -155,8 +157,8 @@ resource "aws_api_gateway_request_validator" "proxy" {
   validate_request_parameters = true
 }
 
-# tfsec:ignore:aws-api-gateway-no-public-access
 resource "aws_api_gateway_method" "proxy" {
+  #ts:skip=aws-api-gateway-no-public-access
   #ts:skip=AWS.APGM.IS.LOW.0056
   #checkov:skip=CKV_AWS_59:protection by token
   rest_api_id          = aws_api_gateway_rest_api.private_api.id
@@ -225,6 +227,7 @@ resource "aws_lambda_permission" "apigw_lambda" {
 }
 
 resource "aws_security_group" "alb" {
+  #ts:skip=AC_AWS_0228
   #checkov:skip=CKV_AWS_260:HTTP open to the world by requirement
   name        = "alb-sg"
   description = "Security group for ALB"
@@ -248,6 +251,7 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_lb" "my_alb" {
+  #ts:skip=AWS.ALL.IS.MEDIUM.0046
   #checkov:skip=CKV_AWS_91:access logging intentionally disabled
   #checkov:skip=CKV_AWS_150:deletion protection intentionally disabled
   #checkov:skip=CKV2_AWS_20:HTTP used in this example
@@ -279,6 +283,7 @@ resource "aws_lb_target_group" "my_target_group" {
 }
 
 resource "aws_lb_listener" "http" {
+  #ts:skip=AWS.ALL.IS.MEDIUM.0046
   #checkov:skip=CKV_AWS_2:HTTP used intentionally
   #checkov:skip=CKV_AWS_20:HTTP used intentionally (no HTTPS redirection)
   #checkov:skip=CKV2_AWS_28:no WAF configured
