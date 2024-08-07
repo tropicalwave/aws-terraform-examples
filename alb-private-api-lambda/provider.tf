@@ -6,6 +6,11 @@ terraform {
       source  = "hashicorp/aws"
       version = ">= 4.22.0"
     }
+
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.4.0"
+    }
   }
 }
 
@@ -14,7 +19,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project = "persistent-efs-mount"
+      Project = "alb-private-api"
     }
   }
 }
