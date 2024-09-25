@@ -3,7 +3,7 @@ name: Infracost
 
 on: [pull_request]
 
-permissions: { }
+permissions: {}
 
 jobs:
   infracost:
@@ -26,7 +26,7 @@ jobs:
       - name: Checkout base branch
         uses: actions/checkout@v4
         with:
-          ref: '${{ github.event.pull_request.base.ref }}'
+          ref: "${{ github.event.pull_request.base.ref }}"
 
       - name: Generate Infracost cost estimate baseline
         run: |
@@ -46,8 +46,8 @@ jobs:
 
       - name: Post Infracost comment
         run: |
-            infracost comment github --path=/tmp/infracost.json \
-                                      --repo="$GITHUB_REPOSITORY" \
-                                      --github-token="${{github.token}}" \
-                                      --pull-request="${{github.event.pull_request.number}}" \
-                                      --behavior=update
+          infracost comment github --path=/tmp/infracost.json \
+                                    --repo="$GITHUB_REPOSITORY" \
+                                    --github-token="${{github.token}}" \
+                                    --pull-request="${{github.event.pull_request.number}}" \
+                                    --behavior=update

@@ -18,7 +18,7 @@ execution of `terraform destroy`.
 
 ## List of projects
 
-* [Cloudfront deployment with static content](static-website/README.md)
-* [Highly available EC2 instance with EFS backend](persistent-efs-mount/README.md)
-* [Route53 DNS service deployment from CSV file with DNSSEC](route53/README.md)
-* [Lambda function behind API gateway and using Parameter Store](api-gateway-lambda/README.md)
+- [Cloudfront deployment with static content](static-website/README.md)
+- [Highly available EC2 instance with EFS backend](persistent-efs-mount/README.md)
+- [Route53 DNS service deployment from CSV file with DNSSEC](route53/README.md)
+- [Lambda function behind API gateway and using Parameter Store](api-gateway-lambda/README.md)
