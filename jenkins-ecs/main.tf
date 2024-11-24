@@ -37,6 +37,64 @@ resource "aws_iam_role" "ecs_execution_role" {
   })
 }
 
+# IAM Role for ECS Task
+resource "aws_iam_role" "ecs_task_role" {
+  name = "ecs-task-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_efs_policy" {
+  name = "ecs-task-efs-policy"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticfilesystem:ClientMount",
+          "elasticfilesystem:ClientWrite",
+        ]
+        Resource = aws_efs_file_system.jenkins_home.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_task_execution_efs_policy" {
+  name = "ecs-task-execution-efs-policy"
+  role = aws_iam_role.ecs_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticfilesystem:ClientMount",
+          "elasticfilesystem:ClientWrite",
+          "elasticfilesystem:DescribeMountTargets",
+          "elasticfilesystem:DescribeFileSystems",
+        ]
+        Resource = aws_efs_file_system.jenkins_home.arn
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
   role       = aws_iam_role.ecs_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
@@ -45,6 +103,7 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
 
 # ECS Task Definition
 resource "aws_ecs_task_definition" "jenkins" {
+  #checkov:skip=CKV_AWS_336:need r/w access to /tmp directory
   family                   = "jenkins"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
@@ -52,11 +111,11 @@ resource "aws_ecs_task_definition" "jenkins" {
   memory                   = "2048"
   track_latest             = true
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([{
-    name                   = "jenkins"
-    image                  = "jenkins/jenkins:2.479.1-lts-alpine"
-    readonlyRootFilesystem = true
+    name  = "jenkins"
+    image = "jenkins/jenkins:2.479.1-lts-alpine"
     portMappings = [{
       containerPort = 8080
       hostPort      = 8080
@@ -80,12 +139,18 @@ resource "aws_ecs_task_definition" "jenkins" {
     efs_volume_configuration {
       transit_encryption = "ENABLED"
       file_system_id     = aws_efs_file_system.jenkins_home.id
+
+      authorization_config {
+        access_point_id = aws_efs_access_point.this.id
+        iam             = "ENABLED"
+      }
     }
   }
 }
 
 # ECS Service
 resource "aws_ecs_service" "jenkins" {
+  #checkov:skip=CKV_AWS_333:public IP needed for downloading image from docker.io
   name            = "jenkins"
   cluster         = aws_ecs_cluster.jenkins.id
   task_definition = aws_ecs_task_definition.jenkins.arn
@@ -93,8 +158,9 @@ resource "aws_ecs_service" "jenkins" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = module.vpc_alb.public_subnets
-    security_groups = [aws_security_group.jenkins.id]
+    subnets          = module.vpc_alb.public_subnets
+    security_groups  = [aws_security_group.jenkins.id]
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -121,6 +187,7 @@ resource "aws_lb" "jenkins" {
 }
 
 resource "aws_lb_target_group" "jenkins" {
+  #ts:skip=AWS.ALTG.IS.MEDIUM.0042
   #checkov:skip=CKV_AWS_378:HTTP used intentionally
   name        = "jenkins-tg"
   port        = 8080
@@ -156,9 +223,12 @@ resource "aws_lb_listener" "jenkins" {
 
 # EFS for Jenkins home
 resource "aws_efs_file_system" "jenkins_home" {
+  #ts:skip=AWS.EFS.EncryptionandKeyManagement.High.0409
+  #ts:skip=AWS.EFS.EncryptionandKeyManagement.High.0410
   #checkov:skip=CKV_AWS_184:encryption with AWS-managed key fine in this example
-  creation_token = "jenkins-home"
-  encrypted      = true
+  creation_token   = "jenkins-home"
+  encrypted        = true
+  performance_mode = "generalPurpose"
 }
 
 resource "aws_efs_mount_target" "jenkins_home" {
@@ -166,6 +236,25 @@ resource "aws_efs_mount_target" "jenkins_home" {
   file_system_id  = aws_efs_file_system.jenkins_home.id
   subnet_id       = module.vpc_alb.public_subnets[count.index]
   security_groups = [aws_security_group.efs.id]
+}
+
+resource "aws_efs_access_point" "this" {
+  file_system_id = aws_efs_file_system.jenkins_home.id
+
+  posix_user {
+    gid = 1000
+    uid = 1000
+  }
+
+  root_directory {
+    path = "/home"
+
+    creation_info {
+      owner_gid   = 1000
+      owner_uid   = 1000
+      permissions = 755
+    }
+  }
 }
 
 # Security Groups
