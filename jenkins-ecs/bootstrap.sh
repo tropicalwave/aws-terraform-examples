@@ -1,4 +1,5 @@
 #!/bin/bash
+# editorconfig-checker-disable-file
 set -e
 mkdir -p /var/jenkins_home/plugins/ /var/jenkins_home/casc
 jenkins-plugin-cli -p \

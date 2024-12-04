@@ -290,6 +290,7 @@ resource "aws_cloudwatch_log_group" "jenkins" {
 }
 
 resource "aws_ssm_parameter" "admin_pw" {
+  #checkov:skip=CKV_AWS_337:no CMK used in this example
   name  = "/jenkins-ecs/admin_pw"
   type  = "SecureString"
   value = var.admin_pw
