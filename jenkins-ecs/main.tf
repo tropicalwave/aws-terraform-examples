@@ -55,27 +55,13 @@ resource "aws_iam_role" "ecs_task_role" {
   })
 }
 
-resource "aws_iam_role_policy" "ecs_task_efs_policy" {
-  name = "ecs-task-efs-policy"
-  role = aws_iam_role.ecs_task_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "elasticfilesystem:ClientMount",
-          "elasticfilesystem:ClientWrite",
-        ]
-        Resource = aws_efs_file_system.jenkins_home.arn
-      }
-    ]
-  })
+resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
+  role       = aws_iam_role.ecs_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-resource "aws_iam_role_policy" "ecs_task_execution_efs_policy" {
-  name = "ecs-task-execution-efs-policy"
+resource "aws_iam_role_policy" "ssm_access_policy" {
+  name = "ssm-access-policy"
   role = aws_iam_role.ecs_execution_role.id
 
   policy = jsonencode({
@@ -84,22 +70,15 @@ resource "aws_iam_role_policy" "ecs_task_execution_efs_policy" {
       {
         Effect = "Allow"
         Action = [
-          "elasticfilesystem:ClientMount",
-          "elasticfilesystem:ClientWrite",
-          "elasticfilesystem:DescribeMountTargets",
-          "elasticfilesystem:DescribeFileSystems",
+          "ssm:GetParameters",
         ]
-        Resource = aws_efs_file_system.jenkins_home.arn
+        Resource = [
+          aws_ssm_parameter.admin_pw.arn
+        ]
       }
     ]
   })
 }
-
-resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
-  role       = aws_iam_role.ecs_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
 
 # ECS Task Definition
 resource "aws_ecs_task_definition" "jenkins" {
@@ -113,38 +92,70 @@ resource "aws_ecs_task_definition" "jenkins" {
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
 
-  container_definitions = jsonencode([{
-    name  = "jenkins"
-    image = "jenkins/jenkins:2.479.1-lts-alpine"
-    portMappings = [{
-      containerPort = 8080
-      hostPort      = 8080
-    }]
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        awslogs-group         = "/ecs/jenkins"
-        awslogs-region        = var.region
-        awslogs-stream-prefix = "ecs"
+  container_definitions = jsonencode([
+    {
+      name      = "bootstrap"
+      image     = var.jenkins_image
+      essential = false
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/jenkins"
+          awslogs-region        = var.region
+          awslogs-stream-prefix = "ecs"
+        }
       }
-    }
-    mountPoints = [{
-      sourceVolume  = "jenkins-home"
-      containerPath = "/var/jenkins_home"
-    }]
+      entrypoint = ["/bin/bash", "-c", file("${path.module}/bootstrap.sh")]
+      mountPoints = [{
+        sourceVolume  = "jenkins-home"
+        containerPath = "/var/jenkins_home"
+      }]
+      secrets = [
+        {
+          name      = "ADMIN_PASSWORD"
+          valueFrom = aws_ssm_parameter.admin_pw.arn
+        }
+      ]
+    },
+    {
+      name  = "jenkins"
+      image = var.jenkins_image
+      portMappings = [{
+        containerPort = 8080
+        hostPort      = 8080
+      }]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/jenkins"
+          awslogs-region        = var.region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+      environment = [
+        {
+          name  = "CASC_JENKINS_CONFIG"
+          value = "/var/jenkins_home/casc/jenkins.yaml"
+        },
+        {
+          name  = "JAVA_OPTS"
+          value = "-Djenkins.install.runSetupWizard=false"
+        },
+      ]
+      mountPoints = [{
+        sourceVolume  = "jenkins-home"
+        containerPath = "/var/jenkins_home"
+      }]
+      dependsOn = [
+        {
+          containerName = "bootstrap"
+          condition     = "COMPLETE"
+        }
+      ]
   }])
 
   volume {
     name = "jenkins-home"
-    efs_volume_configuration {
-      transit_encryption = "ENABLED"
-      file_system_id     = aws_efs_file_system.jenkins_home.id
-
-      authorization_config {
-        access_point_id = aws_efs_access_point.this.id
-        iam             = "ENABLED"
-      }
-    }
   }
 }
 
@@ -156,6 +167,8 @@ resource "aws_ecs_service" "jenkins" {
   task_definition = aws_ecs_task_definition.jenkins.arn
   desired_count   = 1
   launch_type     = "FARGATE"
+
+  force_new_deployment = true
 
   network_configuration {
     subnets          = module.vpc_alb.public_subnets
@@ -221,42 +234,6 @@ resource "aws_lb_listener" "jenkins" {
   }
 }
 
-# EFS for Jenkins home
-resource "aws_efs_file_system" "jenkins_home" {
-  #ts:skip=AWS.EFS.EncryptionandKeyManagement.High.0409
-  #ts:skip=AWS.EFS.EncryptionandKeyManagement.High.0410
-  #checkov:skip=CKV_AWS_184:encryption with AWS-managed key fine in this example
-  creation_token   = "jenkins-home"
-  encrypted        = true
-  performance_mode = "generalPurpose"
-}
-
-resource "aws_efs_mount_target" "jenkins_home" {
-  count           = length(module.vpc_alb.public_subnets)
-  file_system_id  = aws_efs_file_system.jenkins_home.id
-  subnet_id       = module.vpc_alb.public_subnets[count.index]
-  security_groups = [aws_security_group.efs.id]
-}
-
-resource "aws_efs_access_point" "this" {
-  file_system_id = aws_efs_file_system.jenkins_home.id
-
-  posix_user {
-    gid = 1000
-    uid = 1000
-  }
-
-  root_directory {
-    path = "/home"
-
-    creation_info {
-      owner_gid   = 1000
-      owner_uid   = 1000
-      permissions = 755
-    }
-  }
-}
-
 # Security Groups
 resource "aws_security_group" "jenkins" {
   name        = "jenkins-sg"
@@ -304,24 +281,16 @@ resource "aws_security_group" "alb" {
   }
 }
 
-resource "aws_security_group" "efs" {
-  name        = "jenkins-efs-sg"
-  description = "Security group for Jenkins EFS"
-  vpc_id      = module.vpc_alb.vpc_id
-
-  ingress {
-    description     = "Allow traffic from EFS"
-    from_port       = 2049
-    to_port         = 2049
-    protocol        = "tcp"
-    security_groups = [aws_security_group.jenkins.id]
-  }
-}
-
 # CloudWatch Logs
 resource "aws_cloudwatch_log_group" "jenkins" {
   #checkov:skip=CKV_AWS_338:log retention period suffices here
   #checkov:skip=CKV_AWS_158:not encrypted with KMS in this example
   name              = "/ecs/jenkins"
   retention_in_days = 30
+}
+
+resource "aws_ssm_parameter" "admin_pw" {
+  name  = "/jenkins-ecs/admin_pw"
+  type  = "SecureString"
+  value = var.admin_pw
 }
