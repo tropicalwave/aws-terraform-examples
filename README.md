@@ -22,4 +22,4 @@ execution of `terraform destroy`.
 - [Highly available EC2 instance with EFS backend](persistent-efs-mount/README.md)
 - [Route53 DNS service deployment from CSV file with DNSSEC](route53/README.md)
 - [Lambda function behind API gateway and using Parameter Store](api-gateway-lambda/README.md)
-- [Jenkinss within ECS container behind ALB](jenkins-ecs/README.md)
+- [Jenkins within ECS container behind ALB](jenkins-ecs/README.md)
