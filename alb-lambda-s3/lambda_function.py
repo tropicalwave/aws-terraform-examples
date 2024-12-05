@@ -1,4 +1,5 @@
 """Return S3 bucket content"""
+
 # pylint:disable=broad-exception-caught
 import os
 

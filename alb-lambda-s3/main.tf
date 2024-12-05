@@ -28,6 +28,7 @@ module "vpc" {
 
 resource "aws_security_group" "alb_sg" {
   #checkov:skip=CKV_AWS_260:HTTP open from Internet by purpose
+  #ts:skip=AC_AWS_0228
   name        = "allow_http"
   description = "Allow HTTP inbound traffic"
   vpc_id      = module.vpc.vpc_id
@@ -82,12 +83,15 @@ resource "aws_lambda_function" "s3_retriever" {
   #checkov:skip=CKV_AWS_173:environment variable is not sensitive
   #checkov:skip=CKV_AWS_117:run lambda function in Lambda VPC
   #checkov:skip=CKV_AWS_50:disable tracing
+  #ts:skip=AC_AWS_0486 - no VPC configuration in this example
+  #ts:skip=AC_AWS_0483 - environment variables are not encrypted with own key
+  #ts:skip=AC_AWS_0485 - disable tracing
   filename         = data.archive_file.lambda_zip.output_path
   function_name    = "s3-object-retriever"
   role             = aws_iam_role.lambda_role.arn
   handler          = "lambda_function.lambda_handler"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  runtime          = "python3.13"
+  runtime          = "python3.12"
 
   reserved_concurrent_executions = 3
 
@@ -138,6 +142,11 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
 # ALB
 resource "aws_lb" "my_alb" {
   #checkov:skip=CKV_AWS_91:access logging intentionally disabled
@@ -156,6 +165,7 @@ resource "aws_lb" "my_alb" {
 resource "aws_lb_listener" "front_end" {
   #checkov:skip=CKV_AWS_2:HTTP used intentionally
   #checkov:skip=CKV_AWS_103:no HTTPS enabled
+  #ts:skip=AWS.ALL.IS.MEDIUM.0046
   load_balancer_arn = aws_lb.my_alb.arn
   port              = "80"
   protocol          = "HTTP"
